@@ -58,3 +58,5 @@ Join the beta on TestFlight: https://testflight.apple.com/join/t1dbYhd5
 | Android signing certificate / شهادة توقيع أندرويد | `7B:09:63:72:DC:D5:62:95:7E:7B:29:68:FE:C1:FF:24:CF:72:8B:E9:A6:6D:75:21:CA:D7:73:6C:60:01:1D:A3` |
 
 The Mac app is signed with Developer ID and notarized by Apple.
+
+Privacy policy / سياسة الخصوصية: [PRIVACY.md](PRIVACY.md)
