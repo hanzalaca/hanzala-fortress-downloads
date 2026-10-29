@@ -59,4 +59,4 @@ Join the beta on TestFlight: https://testflight.apple.com/join/t1dbYhd5
 
 The Mac app is signed with Developer ID and notarized by Apple.
 
-Privacy policy / سياسة الخصوصية: [PRIVACY.md](PRIVACY.md)
+Privacy policy / سياسة الخصوصية: https://hanzalaca.github.io/hanzala-fortress-downloads/privacy/
