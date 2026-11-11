@@ -8,8 +8,8 @@
 
 ## آيفون
 
-انضم إلى النسخة التجريبية عبر TestFlight:
-https://testflight.apple.com/join/t1dbYhd5
+مجاناً على App Store:
+https://apps.apple.com/app/hanzala-fortress/id6825457828
 
 ## أندرويد
 
@@ -35,7 +35,7 @@ This page holds install files only.
 
 ## iPhone
 
-Join the beta on TestFlight: https://testflight.apple.com/join/t1dbYhd5
+Free on the App Store: https://apps.apple.com/app/hanzala-fortress/id6825457828
 
 ## Android
 
