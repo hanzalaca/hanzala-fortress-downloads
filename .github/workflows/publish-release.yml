@@ -1,0 +1,86 @@
+name: Publish release
+
+# Copies the signed Android APK and the notarized Mac DMG from the private
+# Hanzalaomator releases into a new release here, checks the APK signing
+# certificate, writes the SHA-256 of each file into the notes, and marks the
+# release as latest, so the download page's "latest/download" links serve it.
+#
+# Needs one repository secret, SOURCE_REPO_TOKEN: a fine-grained token with
+# read-only "Contents" access to hanzalaca/Hanzalaomator and nothing else.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version, e.g. 1.0.0 (the tag becomes v1.0.0)"
+        required: true
+      android_tag:
+        description: "Hanzalaomator release holding hanzala-fortress.apk"
+        default: android-v1
+      mac_tag:
+        description: "Hanzalaomator release holding HANZALA-FORTRESS-mac.dmg"
+        default: mac-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_REPO: hanzalaca/Hanzalaomator
+      # Android signing certificate (SHA-256) of every public APK so far.
+      EXPECTED_CERT: 7b096372dcd562957e7b2968fec1ff24cf728be9a66d7521cad7736c60011da3
+      VERSION: ${{ inputs.version }}
+      ANDROID_TAG: ${{ inputs.android_tag }}
+      MAC_TAG: ${{ inputs.mac_tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check the version
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::version must look like 1.0.0"; exit 1; }
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::release v$VERSION already exists"; exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Download the APK and the DMG
+        env:
+          GH_TOKEN: ${{ secrets.SOURCE_REPO_TOKEN }}
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "::error::SOURCE_REPO_TOKEN secret is not set"; exit 1; }
+          mkdir dist
+          gh release download "$ANDROID_TAG" -R "$SOURCE_REPO" -p hanzala-fortress.apk -D dist
+          gh release download "$MAC_TAG" -R "$SOURCE_REPO" -p HANZALA-FORTRESS-mac.dmg -D dist
+          ls -l dist
+
+      - name: Check the APK signing certificate
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          "$apksigner" verify --print-certs dist/hanzala-fortress.apk > certs.txt
+          cat certs.txt
+          got="$(grep -m1 'certificate SHA-256 digest' certs.txt | awk '{print $NF}')"
+          if [ "$got" != "$EXPECTED_CERT" ]; then
+            echo "::error::APK is signed with $got, expected $EXPECTED_CERT"; exit 1
+          fi
+
+      - name: Write the notes
+        run: |
+          apk_sha="$(sha256sum dist/hanzala-fortress.apk | cut -d' ' -f1)"
+          dmg_sha="$(sha256sum dist/HANZALA-FORTRESS-mac.dmg | cut -d' ' -f1)"
+          sed -e "s/VERSION/$VERSION/" -e "s/APK_SHA256/$apk_sha/" -e "s/DMG_SHA256/$dmg_sha/" \
+            .github/release-notes.md > notes.md
+          cat notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" dist/hanzala-fortress.apk dist/HANZALA-FORTRESS-mac.dmg \
+            --target "$GITHUB_SHA" --title "HANZALA FORTRESS $VERSION" \
+            --notes-file notes.md --latest
