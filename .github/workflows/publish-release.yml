@@ -17,7 +17,7 @@ on:
         description: "Hanzalaomator release holding hanzala-fortress.apk"
         default: android-v1
       mac_tag:
-        description: "Hanzalaomator release holding HANZALA-FORTRESS-mac.dmg"
+        description: "Hanzalaomator release holding HANZALA-FORTRESS-mac.dmg (if missing, the Mac file of the current latest release is reused)"
         default: mac-v1
 
 permissions:
@@ -52,11 +52,20 @@ jobs:
       - name: Download the APK and the DMG
         env:
           GH_TOKEN: ${{ secrets.SOURCE_REPO_TOKEN }}
+          OWN_TOKEN: ${{ github.token }}
         run: |
           [ -n "$GH_TOKEN" ] || { echo "::error::SOURCE_REPO_TOKEN secret is not set"; exit 1; }
           mkdir dist
           gh release download "$ANDROID_TAG" -R "$SOURCE_REPO" -p hanzala-fortress.apk -D dist
-          gh release download "$MAC_TAG" -R "$SOURCE_REPO" -p HANZALA-FORTRESS-mac.dmg -D dist
+          if gh release download "$MAC_TAG" -R "$SOURCE_REPO" -p HANZALA-FORTRESS-mac.dmg -D dist; then
+            echo "MAC_NOTE=" >> "$GITHUB_ENV"
+          else
+            # No new Mac build yet: carry the Mac file over from the current
+            # latest release here, so the download page's Mac link keeps working.
+            echo "::warning::No $MAC_TAG release in $SOURCE_REPO; reusing the Mac file of the current latest release"
+            GH_TOKEN="$OWN_TOKEN" gh release download -R "$GITHUB_REPOSITORY" -p HANZALA-FORTRESS-mac.dmg -D dist
+            echo "MAC_NOTE=The Mac file is unchanged from the previous release; a new Mac build follows. / ملف الماك نفسه من الإصدار السابق، والنسخة الجديدة للماك قادمة." >> "$GITHUB_ENV"
+          fi
           ls -l dist
 
       - name: Check the APK signing certificate
@@ -75,6 +84,7 @@ jobs:
           dmg_sha="$(sha256sum dist/HANZALA-FORTRESS-mac.dmg | cut -d' ' -f1)"
           sed -e "s/VERSION/$VERSION/" -e "s/APK_SHA256/$apk_sha/" -e "s/DMG_SHA256/$dmg_sha/" \
             .github/release-notes.md > notes.md
+          if [ -n "$MAC_NOTE" ]; then printf '\n%s\n' "$MAC_NOTE" >> notes.md; fi
           cat notes.md
 
       - name: Publish
